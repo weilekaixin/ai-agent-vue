@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {computed, ref} from 'vue'
 import {useChatStore} from '../stores/chat'
 
 const props = withDefaults(defineProps<{
@@ -35,8 +35,8 @@ function onInput(e: Event) {
   el.style.height = Math.min(el.scrollHeight, 200) + 'px'
 }
 
-const isLoading = () => chat.active?.messages.some(m => m.loading) ?? false
-const canSend = () => text.value.trim().length > 0 && !props.disabled && !isLoading()
+const isLoading = computed(() => chat.active?.messages.some(m => m.loading) ?? false)
+const canSend = computed(() => text.value.trim().length > 0 && !props.disabled && !isLoading.value)
 </script>
 
 <template>
@@ -54,7 +54,7 @@ const canSend = () => text.value.trim().length > 0 && !props.disabled && !isLoad
               @input="onInput"
           />
           <button
-              v-if="isLoading()"
+              v-if="isLoading"
               class="stop-btn"
               title="中断生成"
               @click="chat.stopChat()"
@@ -65,8 +65,8 @@ const canSend = () => text.value.trim().length > 0 && !props.disabled && !isLoad
           </button>
           <button
               v-else
-              :disabled="!canSend()"
-              :class="['send-btn', { 'send-btn-active': canSend() }]"
+              :disabled="!canSend"
+              :class="['send-btn', { 'send-btn-active': canSend }]"
               title="发送 (Enter)"
               @click="send"
           >

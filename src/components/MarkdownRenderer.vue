@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import python from 'highlight.js/lib/languages/python'
+import java from 'highlight.js/lib/languages/java'
+import typescript from 'highlight.js/lib/languages/typescript'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import sql from 'highlight.js/lib/languages/sql'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
 
 const md = new MarkdownIt({
   html: false,
@@ -9,6 +18,21 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true,
 })
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('js', javascript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('py', python)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('ts', typescript)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('shell', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('css', css)
 
 // ── 自定义 fence 渲染：干净简约，无语言标签 ──
 md.renderer.rules.fence = (tokens, idx) => {
@@ -148,7 +172,23 @@ function preprocessMarkdown(src: string): string {
 }
 
 const props = defineProps<{ content: string }>()
-const html = computed(() => md.render(preprocessMarkdown(props.content)))
+
+// Debounced content to avoid re-rendering on every SSE token
+const debouncedContent = ref(props.content)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(() => props.content, (val) => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    debouncedContent.value = val
+  }, 80)
+}, { immediate: true })
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
+
+const html = computed(() => md.render(preprocessMarkdown(debouncedContent.value)))
 </script>
 
 <template>

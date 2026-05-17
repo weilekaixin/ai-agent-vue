@@ -33,7 +33,7 @@ watch(() => chat.active?.messages, async () => {
   if (isNearBottom.value) {
     bottomRef.value?.scrollIntoView({ behavior: 'smooth' })
   }
-}, { deep: true })
+})
 </script>
 
 <template>

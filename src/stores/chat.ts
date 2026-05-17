@@ -97,62 +97,65 @@ export const useChatStore = defineStore('chat', () => {
         const outputDelta = estimateTokens(chunk)
         const idx = state.sessions.findIndex(s => s.id === sid)
         if (idx < 0) return
-        const msgs = state.sessions[idx].messages.map(m =>
-          m.id === botId
-            ? { ...m, content: m.content + chunk, tokens: (m.tokens ?? 0) + outputDelta }
-            : m,
-        )
-        patchSession(idx, { messages: msgs })
+        const session = state.sessions[idx]
+        const botMsg = session.messages.find(m => m.id === botId)
+        if (botMsg) {
+          botMsg.content += chunk
+          botMsg.tokens = (botMsg.tokens ?? 0) + outputDelta
+          // Trigger reactivity by replacing the array reference (cheaper than full map)
+          patchSession(idx, { messages: [...session.messages] })
+        }
       },
       (meta) => {
         const idx = state.sessions.findIndex(s => s.id === sid)
         if (idx < 0) return
-        const msgs = state.sessions[idx].messages.map(m => {
-          if (m.id !== botId) return m
-          const updated: Message = { ...m, loading: false }
+        const session = state.sessions[idx]
+        const botMsg = session.messages.find(m => m.id === botId)
+        if (!botMsg) return
 
-          if (meta) {
-            if (meta.completionTokens !== undefined) {
-              updated.tokens = meta.completionTokens
-              updated.outputTokens = meta.completionTokens
-            }
-            if (meta.promptTokens !== undefined) {
-              updated.inputTokens = meta.promptTokens
-            }
-            if (meta.durationMs !== undefined) {
-              updated.durationMs = meta.durationMs
-            }
-            // 保存待确认信息到消息
-            if (meta.needConfirm) {
-              updated.actionType = meta.actionType
-              updated.actionData = meta.actionData
-            }
+        botMsg.loading = false
+
+        if (meta) {
+          if (meta.completionTokens !== undefined) {
+            botMsg.tokens = meta.completionTokens
+            botMsg.outputTokens = meta.completionTokens
           }
-
-          // 解析 DeepSeek-R1 思考链 <think>...</think>
-          const fullContent = updated.content
-          const thinkEndIdx = fullContent.lastIndexOf('</think>')
-          if (thinkEndIdx >= 0) {
-            const thinkStartIdx = fullContent.indexOf('<think>')
-            if (thinkStartIdx >= 0 && thinkStartIdx < thinkEndIdx) {
-              updated.thinking = fullContent.substring(thinkStartIdx + 7, thinkEndIdx).trim()
-              updated.content = fullContent.substring(thinkEndIdx + 8).trim()
-            }
+          if (meta.promptTokens !== undefined) {
+            botMsg.inputTokens = meta.promptTokens
           }
+          if (meta.durationMs !== undefined) {
+            botMsg.durationMs = meta.durationMs
+          }
+          // 保存待确认信息到消息
+          if (meta.needConfirm) {
+            botMsg.actionType = meta.actionType
+            botMsg.actionData = meta.actionData
+          }
+        }
 
-          return updated
-        })
-        patchSession(idx, { messages: msgs })
+        // 解析 DeepSeek-R1 思考链 <think>...</think>
+        const fullContent = botMsg.content
+        const thinkEndIdx = fullContent.lastIndexOf('</think>')
+        if (thinkEndIdx >= 0) {
+          const thinkStartIdx = fullContent.indexOf('<think>')
+          if (thinkStartIdx >= 0 && thinkStartIdx < thinkEndIdx) {
+            botMsg.thinking = fullContent.substring(thinkStartIdx + 7, thinkEndIdx).trim()
+            botMsg.content = fullContent.substring(thinkEndIdx + 8).trim()
+          }
+        }
+
+        patchSession(idx, { messages: [...session.messages] })
       },
       (err) => {
         const idx = state.sessions.findIndex(s => s.id === sid)
         if (idx < 0) return
-        const msgs = state.sessions[idx].messages.map(m =>
-          m.id === botId
-            ? { ...m, content: m.content || `请求失败：${err.message}`, loading: false, error: true }
-            : m,
-        )
-        patchSession(idx, { messages: msgs })
+        const session = state.sessions[idx]
+        const botMsg = session.messages.find(m => m.id === botId)
+        if (!botMsg) return
+        botMsg.content = botMsg.content || `请求失败：${err.message}`
+        botMsg.loading = false
+        botMsg.error = true
+        patchSession(idx, { messages: [...session.messages] })
       },
       // onNeedConfirm — 实时收到需确认信号立即弹出弹框
       (meta) => {
