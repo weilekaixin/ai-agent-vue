@@ -880,6 +880,146 @@ body {
   color: var(--color-text-primary);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Confirm Bar — 输入框上方的操作确认栏
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.confirm-bar {
+  max-width: 740px;
+  margin: 0 auto var(--space-2);
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  animation: fadeUp 0.2s var(--ease-out);
+}
+
+.confirm-bar__body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.confirm-bar__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--color-accent);
+}
+
+.confirm-bar__text {
+  font-family: var(--font-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 380px;
+}
+
+.confirm-bar__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.confirm-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+
+.confirm-bar__btn--reject {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.confirm-bar__btn--reject:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.confirm-bar__btn--allow {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.confirm-bar__btn--allow:hover {
+  background: var(--color-accent-hover);
+}
+
+.confirm-bar__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirm-bar__btn--allow:disabled:hover {
+  background: var(--color-accent);
+}
+
+.confirm-bar__btn--reject:disabled:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.confirm-bar__btn--allow:active {
+  transform: scale(0.97);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Message Status Indicators — near the assistant message
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.msg-status {
+  margin-bottom: 8px;
+  animation: fadeUp 0.2s var(--ease-out);
+}
+
+.msg-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.msg-status-badge--pending {
+  background: rgba(217, 119, 87, 0.1);
+  color: var(--color-accent);
+  border: 1px solid rgba(217, 119, 87, 0.2);
+}
+
+.msg-status-badge--executing {
+  background: rgba(80, 160, 120, 0.1);
+  color: #50A078;
+  border: 1px solid rgba(80, 160, 120, 0.25);
+}
+
+.msg-status-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
 /* ── Animations ──────────────────────────────────────────────────────────── */
 @keyframes pulseDot {
   0%, 60%, 100% { transform: scale(0.85); opacity: 0.45; }

@@ -17,6 +17,10 @@ export interface Message {
   thinking?: string
   /** 消息创建时间戳（用于实时计时） */
   startTime?: number
+  /** 待人工确认的操作类型 */
+  actionType?: string
+  /** 待人工确认的操作数据 */
+  actionData?: Record<string, unknown>
 }
 
 export interface Session {
@@ -31,6 +35,12 @@ export interface ChatMetadata {
   promptTokens: number
   completionTokens: number
   durationMs: number
+  /** 后端标记：需要人工确认 */
+  needConfirm?: boolean
+  /** 操作类型，如 "send_email" */
+  actionType?: string
+  /** 操作相关数据（邮件内容等） */
+  actionData?: Record<string, unknown>
 }
 
 /** 粗略估算 token 数（与后端 estimateTokens 保持一致） */

@@ -39,7 +39,26 @@ function parseSsePart(part: string, onChunk: (chunk: string) => void, onMeta: (m
     return
   }
 
-  // 尝试解析 JSON 元数据（含 __meta__ 标记）
+  // ── __INTERRUPT__ 人工确认信号 ──────────────────────────────────
+  //   格式: __INTERRUPT__:{"type":"interrupt","tool":"send_email","args":{...}}
+  //   由 AI Agent 在需要人工确认时发送（如发邮件前暂停等待确认）
+  const INTERRUPT_PREFIX = '__INTERRUPT__:'
+  if (raw.trim().startsWith(INTERRUPT_PREFIX)) {
+    try {
+      const jsonStr = raw.trim().slice(INTERRUPT_PREFIX.length)
+      const parsed = JSON.parse(jsonStr)
+      onMeta({
+        needConfirm: true,
+        actionType: parsed.tool || 'unknown',
+        actionData: parsed.args || {},
+      } as ChatMetadata)
+      return
+    } catch {
+      // JSON 解析失败，当作普通内容回退
+    }
+  }
+
+  // ── JSON 元数据（含 __meta__ 标记） ────────────────────────────
   if (raw.trim().startsWith('{')) {
     try {
       const parsed = JSON.parse(raw.trim())
@@ -63,6 +82,7 @@ export function chat(
   onChunk: (chunk: string) => void,
   onDone: (meta?: ChatMetadata) => void,
   onError: (err: Error) => void,
+  onNeedConfirm?: (meta: ChatMetadata) => void,
 ): AbortController {
   const abortController = new AbortController()
 
@@ -95,7 +115,12 @@ export function chat(
         buffer = parts.pop() || ''
 
         for (const part of parts) {
-          parseSsePart(part, onChunk, (meta) => { collectedMeta = meta })
+          parseSsePart(part, onChunk, (meta) => {
+            collectedMeta = meta
+            if (meta.needConfirm && onNeedConfirm) {
+              onNeedConfirm(meta)
+            }
+          })
         }
       }
 

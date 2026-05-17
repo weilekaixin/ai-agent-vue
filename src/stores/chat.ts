@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { computed, reactive } from 'vue'
-import type { Session, Message } from '../types'
+import { computed, reactive, ref } from 'vue'
+import type { Session, Message, ChatMetadata } from '../types'
 import { estimateTokens } from '../types'
 import * as api from '../api'
 
@@ -15,6 +15,9 @@ export const useChatStore = defineStore('chat', () => {
   })
 
   let abortController: AbortController | null = null
+  const pendingConfirm = ref<ChatMetadata | null>(null)
+  /** 确认/拒绝请求进行中，防止重复点击 */
+  const confirming = ref(false)
 
   const active = computed(() => {
     if (!state.activeId) return null
@@ -119,6 +122,11 @@ export const useChatStore = defineStore('chat', () => {
             if (meta.durationMs !== undefined) {
               updated.durationMs = meta.durationMs
             }
+            // 保存待确认信息到消息
+            if (meta.needConfirm) {
+              updated.actionType = meta.actionType
+              updated.actionData = meta.actionData
+            }
           }
 
           // 解析 DeepSeek-R1 思考链 <think>...</think>
@@ -146,6 +154,10 @@ export const useChatStore = defineStore('chat', () => {
         )
         patchSession(idx, { messages: msgs })
       },
+      // onNeedConfirm — 实时收到需确认信号立即弹出弹框
+      (meta) => {
+        pendingConfirm.value = meta
+      },
     )
   }
 
@@ -153,11 +165,99 @@ export const useChatStore = defineStore('chat', () => {
     abortController?.abort()
   }
 
+  // ── 人工确认 ──────────────────────────────
+
+  async function confirmAction() {
+    if (!pendingConfirm.value || !state.activeId || confirming.value) return
+    confirming.value = true
+    const sid = state.activeId
+
+    try {
+      const response = await fetch('/api/chat/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid, approved: true }),
+      })
+      if (!response.ok) {
+        console.error('resume API 失败:', response.status)
+        return
+      }
+      // 读取 SSE 流中的补充回复
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let extraContent = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+        for (const part of parts) {
+          const lines = part.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.slice(5)
+              if (data && !data.startsWith('{') && !data.startsWith('__')) {
+                extraContent += data
+              }
+            }
+          }
+        }
+      }
+      // 把补充回复追加到最后一条 bot 消息
+      if (extraContent) {
+        const idx = state.sessions.findIndex(s => s.id === sid)
+        if (idx >= 0) {
+          const msgs = [...state.sessions[idx].messages]
+          // 从后往前找最后一条非 loading 的 assistant 消息
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === 'assistant' && !msgs[i].loading) {
+              msgs[i] = { ...msgs[i], content: msgs[i].content + '\n\n' + extraContent }
+              break
+            }
+          }
+          patchSession(idx, { messages: msgs })
+        }
+      }
+    } catch (err) {
+      console.error('resume API 异常:', err)
+    } finally {
+      pendingConfirm.value = null
+      confirming.value = false
+    }
+  }
+
+  async function rejectAction() {
+    if (!pendingConfirm.value || !state.activeId || confirming.value) return
+    confirming.value = true
+    const sid = state.activeId
+
+    try {
+      const response = await fetch('/api/chat/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid, approved: false }),
+      })
+      if (!response.ok) {
+        console.error('reject API 失败:', response.status)
+      }
+    } catch (err) {
+      console.error('reject API 异常:', err)
+    } finally {
+      pendingConfirm.value = null
+      confirming.value = false
+    }
+  }
+
   return {
     sessions: computed(() => state.sessions),
     activeId: computed(() => state.activeId),
     active,
+    pendingConfirm,
+    confirming,
     newSession, selectSession, deleteSession,
     sendMessage, stopChat,
+    confirmAction, rejectAction,
   }
 })

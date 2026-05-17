@@ -2,9 +2,26 @@
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import type {Message as Msg} from '../types'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import { useChatStore } from '../stores/chat'
 
 const props = defineProps<{ message: Msg }>()
 const thinkOpen = ref(false)
+const chat = useChatStore()
+
+function formatActionType(type?: string): string {
+  const map: Record<string, string> = {
+    send_email: '发送邮件',
+    send_message: '发送消息',
+    execute_code: '执行代码',
+    create_file: '创建文件',
+    modify_file: '修改文件',
+    delete_file: '删除文件',
+    web_search: '搜索网络',
+    web_fetch: '读取网页',
+    tool_call: '调用工具',
+  }
+  return type ? (map[type] ?? type) : '操作'
+}
 
 /** 当前内容是否包含思考链（用于流式进行中检测） */
 const hasThinking = computed(() => {
@@ -120,6 +137,18 @@ function formatTokenCount(n: number): string {
           <div v-show="thinkOpen" class="think-expanded">
             <MarkdownRenderer :content="liveThinking"/>
           </div>
+        </div>
+
+        <!-- Processing status indicators -->
+        <div v-if="message.actionType && (chat.pendingConfirm || chat.confirming)" class="msg-status">
+          <span v-if="chat.confirming" class="msg-status-badge msg-status-badge--executing">
+            <span class="msg-status-icon">&#128228;</span>
+            <span>{{ ' 正在执行' + formatActionType(message.actionType) + '...' }}</span>
+          </span>
+          <span v-else class="msg-status-badge msg-status-badge--pending">
+            <span class="msg-status-icon">&#9203;</span>
+            <span>{{ ' 正在准备' + formatActionType(message.actionType) + '...' }}</span>
+          </span>
         </div>
 
         <div class="msg-bubble assistant">

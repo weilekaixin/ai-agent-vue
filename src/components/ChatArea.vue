@@ -3,6 +3,7 @@ import { ref, watch, nextTick } from 'vue'
 import { useChatStore } from '../stores/chat'
 import Message from './Message.vue'
 import InputArea from './InputArea.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 defineEmits<{ 'toggle-sidebar': [] }>()
 
@@ -55,6 +56,7 @@ watch(() => chat.active?.messages, async () => {
         <div class="empty-center-area">
           <h1 class="empty-title">{{ greeting() }}</h1>
         </div>
+        <ConfirmDialog />
         <InputArea />
       </div>
     </template>
@@ -68,6 +70,7 @@ watch(() => chat.active?.messages, async () => {
           </div>
           <div ref="bottomRef" style="height: 1px" />
         </div>
+        <ConfirmDialog />
         <InputArea :disabled="false" :placeholder="'继续对话...'" />
       </div>
     </template>
